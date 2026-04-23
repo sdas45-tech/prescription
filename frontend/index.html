@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="VGG16-based Prescription Image Classifier - Upload an image to detect if it's a prescription or not.">
+    <title>Prescription Classifier - VGG16 AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Leaflet for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header" id="header">
+            <div class="header-glow"></div>
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="14" width="36" height="24" rx="4" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                            <path d="M6 20h36" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+                            <path d="M14 26h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                            <path d="M14 30h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                            <path d="M30 24l4 4 8-8" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="38" cy="10" r="6" fill="#8b5cf6" opacity="0.8"/>
+                            <text x="38" y="13" text-anchor="middle" fill="white" font-size="8" font-weight="bold">AI</text>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="app-title">Prescription Classifier</h1>
+                        <p class="app-subtitle">Powered by VGG16 Deep Learning</p>
+                    </div>
+                </div>
+                <div class="header-status" id="modelStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Checking model...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- Upload Card -->
+            <section class="upload-section" id="uploadSection">
+                <div class="card upload-card">
+                    <div class="card-header">
+                        <h2>Upload Image</h2>
+                        <p>Drag & drop or click to upload a prescription image</p>
+                    </div>
+
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-zone-content" id="dropZoneContent">
+                            <div class="upload-icon">
+                                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="8" y="16" width="48" height="36" rx="6" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 4"/>
+                                    <path d="M32 22v20M24 30l8-8 8 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <p class="drop-text">Drop your image here</p>
+                            <p class="drop-subtext">or click to browse files</p>
+                            <p class="drop-formats">Supports: JPG, PNG, WebP, BMP</p>
+                        </div>
+                        <div class="preview-container" id="previewContainer" style="display:none;">
+                            <img id="previewImage" alt="Preview" class="preview-image"/>
+                            <button class="btn-remove" id="btnRemove" title="Remove image">X</button>
+                        </div>
+                        <input type="file" id="fileInput" accept="image/*" hidden>
+                    </div>
+
+                    <button class="btn-predict" id="btnPredict" disabled>
+                        <span class="btn-icon">&#128269;</span>
+                        <span class="btn-text">Analyze Image</span>
+                        <div class="btn-loader" id="btnLoader" style="display:none;">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display:none;">
+                <div class="card result-card">
+                    <div class="card-header">
+                        <h2>Analysis Result</h2>
+                    </div>
+
+                    <div class="result-content">
+                        <!-- Result Badge -->
+                        <div class="result-badge" id="resultBadge">
+                            <div class="badge-icon" id="badgeIcon">&#128203;</div>
+                            <div class="badge-label" id="badgeLabel">PRESCRIPTION</div>
+                        </div>
+
+                        <!-- Confidence Meter -->
+                        <div class="confidence-section">
+                            <div class="confidence-header">
+                                <span>Confidence</span>
+                                <span class="confidence-value" id="confidenceValue">0%</span>
+                            </div>
+                            <div class="confidence-bar-track">
+                                <div class="confidence-bar-fill" id="confidenceBar" style="width:0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Details -->
+                        <div class="result-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Classification</span>
+                                <span class="detail-value" id="detailClass">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Raw Score</span>
+                                <span class="detail-value" id="detailScore">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">File Name</span>
+                                <span class="detail-value" id="detailFile">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Image Size</span>
+                                <span class="detail-value" id="detailSize">--</span>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Analysis -->
+                        <div class="result-details analysis-section" id="aiAnalysisBox" style="display:none; margin-top:20px;">
+                            <div class="detail-row" style="border-bottom:none; flex-direction:column; align-items:flex-start; gap:10px; background: transparent; padding: 0;">
+                                <span class="detail-label" style="display:flex; align-items:center; gap:8px; font-size: 1rem; color: var(--accent-purple-light);">
+                                    <span>&#10024;</span> AI Layman Translation
+                                </span>
+                                <div id="aiAnalysisText" class="ai-analysis-container ai-analysis-content" style="width:100%; box-sizing: border-box;">
+                                    --
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-new" id="btnNew">
+                        <span>&#8635;</span> Analyze Another Image
+                    </button>
+                </div>
+            </section>
+
+            <!-- Map Section (Visible only when it's a prescription) -->
+            <section class="map-section" id="mapSection" style="display:none; margin-bottom: 24px;">
+                <div class="card map-card">
+                    <div class="card-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h2>Nearest Hospitals & Clinics</h2>
+                            <p>Finding medical facilities near your location</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="radiusSelect" style="font-size: 0.85rem; color: var(--text-secondary);">Radius:</label>
+                            <select id="radiusSelect" style="background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer;">
+                                <option value="2000">2 km</option>
+                                <option value="5000" selected>5 km</option>
+                                <option value="10000">10 km</option>
+                                <option value="20000">20 km</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="map" style="height: 350px; width: 100%; border-radius: 8px; border: 1px solid var(--border-color); z-index: 1;"></div>
+                    <p id="mapStatus" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px; text-align: center;">Requesting your location to find nearby hospitals...</p>
+                    
+                    <div id="facilityList" style="margin-top: 24px; display: none;">
+                        <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">Nearby Specialists</h3>
+                        <div id="facilityGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section class="history-section" id="historySection" style="display:none;">
+                <div class="card history-card">
+                    <div class="card-header">
+                        <h2>Recent Predictions</h2>
+                        <button class="btn-clear" id="btnClearHistory">Clear All</button>
+                    </div>
+                    <div class="history-list" id="historyList"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with <span class="heart">&hearts;</span> using VGG16 Transfer Learning &mdash; TensorFlow + FastAPI</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

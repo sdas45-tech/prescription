@@ -1,0 +1,11 @@
+tensorflow>=2.12.0
+numpy
+matplotlib
+seaborn
+scikit-learn
+Pillow
+Flask
+Flask-Cors
+Werkzeug
+python-dotenv
+google-generativeai

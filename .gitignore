@@ -1,0 +1,31 @@
+# Environments
+backend/myenv/
+myenv/
+env/
+venv/
+.venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environment Variables (Keep API keys secret!)
+.env
+.env.*
+
+# Datasets and Large Files
+classification_dataset/
+model/
+*.pt
+*.pth
+*.weights
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/

@@ -1,0 +1,7 @@
+backend/
+model/
+myenv/
+.env
+.git/
+*.keras
+*.h5
