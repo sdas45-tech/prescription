@@ -29,3 +29,7 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
+
+# Vercel & Node
+node_modules/
+.vercel/
