@@ -10,6 +10,20 @@ const API_BASE = isLocalhost
     ? "http://127.0.0.1:8000" 
     : "https://your-backend-url.onrender.com"; // <-- Change this to your deployed backend URL!
 
+// Specialty icons shared across map popups and doctor tab
+const SPECIALTIES_ICONS_MAP = {
+    "General Physician": "🩺",
+    "Cardiologist":      "❤️",
+    "Dermatologist":     "🔬",
+    "Pediatrician":      "👶",
+    "Orthopedist":       "🦴",
+    "Neurologist":       "🧠",
+    "Gynecologist":      "🩻",
+    "Oncologist":        "🎗️",
+    "ENT Specialist":    "👂"
+};
+
+
 // -- DOM Elements --
 const dropZone        = document.getElementById("dropZone");
 const dropZoneContent = document.getElementById("dropZoneContent");
@@ -310,86 +324,52 @@ function initMapAndFindHospitals() {
                 document.getElementById("facilityList").style.display = "block";
                 
                 hospitals.forEach(h => {
-                    let doctorsHtml = h.roster.map(doc => {
-                        const color = doc.status === "Available" ? "#22c55e" : "#eab308";
-                        return `
-                            <li style="margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:4px;">
-                                <div>
-                                    <div style="font-weight:600; color:#111;">${doc.name}</div>
-                                    <div style="font-size:11px; color:#666;">${doc.specialty}</div>
-                                </div>
-                                <div style="font-size:10px; padding:2px 6px; border-radius:10px; background:${color}22; color:${color}; font-weight:700; border:1px solid ${color}44;">
-                                    ${doc.status}
-                                </div>
-                            </li>`;
-                    }).join("");
-
+                    const specs = h.available_specialties || [];
                     const mapLink = `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`;
+
+                    const specListHtml = specs.map(spec => `
+                        <li style="padding:5px 0; border-bottom:1px solid #e2e8f0; font-size:12px; color:#334155;">
+                            ${SPECIALTIES_ICONS_MAP[spec] || '💊'} ${spec}
+                        </li>`).join("");
 
                     const popupContent = `
                         <div style="font-size:13px; min-width:240px; max-height:300px; overflow-y:auto; font-family:'Inter', sans-serif; padding:4px;">
                             <h4 style="margin:0 0 4px 0; color:#1a56db; font-size:15px; font-weight:700;">${h.name}</h4>
-                            <div style="font-size:11px; color:#666; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px;">${h.type} &bull; Open Now</div>
-                            
-                            <div style="background:#f8fafc; padding:8px; border-radius:6px; margin-bottom:12px; border:1px solid #e2e8f0;">
-                                <div style="margin-bottom:4px;"><b>OPD:</b> ${h.opd_time}</div>
-                                <div style="margin-bottom:0px;"><b>Contact:</b> ${h.phone}</div>
+                            <div style="font-size:11px; color:#666; margin-bottom:10px; text-transform:uppercase;">${h.type} &bull; Open Now</div>
+                            <div style="background:#f8fafc; padding:8px; border-radius:6px; margin-bottom:10px; border:1px solid #e2e8f0;">
+                                <div><b>OPD:</b> ${h.opd_time}</div>
+                                <div><b>Contact:</b> ${h.phone}</div>
                             </div>
-                            
-                            <div style="margin-bottom:12px;">
-                                <b style="display:block; margin-bottom:8px; color:#334155; font-size:12px; text-transform:uppercase;">Specialist Roster</b>
-                                <ul style="margin:0; padding:0; list-style:none;">
-                                    ${doctorsHtml}
-                                </ul>
+                            <div style="margin-bottom:10px;">
+                                <b style="display:block; margin-bottom:6px; color:#334155; font-size:11px; text-transform:uppercase;">Available Specialties (${specs.length})</b>
+                                <ul style="margin:0; padding:0; list-style:none;">${specListHtml}</ul>
                             </div>
-                            
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
-                                <a href="tel:${h.phone}" style="background:#10b981; color:white; text-decoration:none; padding:8px 0; border-radius:6px; font-weight:600; text-align:center; font-size:12px;">
-                                    📞 Call Now
-                                </a>
-                                <a href="${mapLink}" target="_blank" style="background:#2563eb; color:white; text-decoration:none; padding:8px 0; border-radius:6px; font-weight:600; text-align:center; font-size:12px;">
-                                    📍 Directions
-                                </a>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <a href="tel:${h.phone}" style="background:#10b981; color:white; text-decoration:none; padding:8px 0; border-radius:6px; font-weight:600; text-align:center; font-size:12px;">📞 Call</a>
+                                <a href="${mapLink}" target="_blank" style="background:#2563eb; color:white; text-decoration:none; padding:8px 0; border-radius:6px; font-weight:600; text-align:center; font-size:12px;">📍 Directions</a>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                     
-                    L.marker([h.lat, h.lon]).addTo(markerGroup)
-                        .bindPopup(popupContent);
+                    L.marker([h.lat, h.lon]).addTo(markerGroup).bindPopup(popupContent);
                         
-                    // Add to grid
+                    // Add to facility grid below map
                     if (facilityGrid) {
                         const gridCard = document.createElement("div");
                         gridCard.className = "facility-card";
-                        
-                        let cardRosterHtml = h.roster.map(doc => {
-                            const badgeColor = doc.status === "Available" ? "#22c55e" : "#f59e0b";
-                            return `
-                                <div class="facility-roster-item">
-                                    <div>
-                                        <div class="facility-roster-name">${doc.name}</div>
-                                        <div class="facility-roster-spec">${doc.specialty}</div>
-                                    </div>
-                                    <div class="facility-status-badge" style="background: ${badgeColor}22; color: ${badgeColor}; border: 1px solid ${badgeColor}44;">
-                                        ${doc.status}
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+
+                        const badgeHtml = specs.map(spec => `
+                            <span style="display:inline-flex; align-items:center; gap:4px; background:rgba(139,92,246,0.12); color:var(--accent-purple-light); border:1px solid rgba(139,92,246,0.2); border-radius:20px; padding:4px 10px; font-size:0.72rem; font-weight:600;">
+                                ${SPECIALTIES_ICONS_MAP[spec] || '💊'} ${spec}
+                            </span>`).join("");
 
                         gridCard.innerHTML = `
                             <h4 class="facility-card-title">${h.name}</h4>
-                            <div class="facility-card-meta">
-                                <span>${h.type}</span> &bull; <span>OPD: ${h.opd_time}</span>
-                            </div>
-                            <div class="facility-roster">
-                                ${cardRosterHtml}
-                            </div>
+                            <div class="facility-card-meta"><span>${h.type.toUpperCase()}</span> &bull; <span>OPD: ${h.opd_time}</span></div>
+                            <div style="margin-bottom:14px; display:flex; flex-wrap:wrap; gap:6px;">${badgeHtml}</div>
                             <div class="facility-actions">
                                 <a href="tel:${h.phone}" class="btn-action btn-action-call">📞 Call Now</a>
                                 <a href="${mapLink}" target="_blank" class="btn-action btn-action-map">📍 Directions</a>
-                            </div>
-                        `;
+                            </div>`;
                         facilityGrid.appendChild(gridCard);
                     }
                 });
