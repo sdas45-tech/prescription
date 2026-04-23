@@ -51,6 +51,12 @@
             </div>
         </header>
 
+        <!-- Navigation Tabs -->
+        <nav class="app-nav" id="appNav">
+            <button class="nav-tab active" data-tab="scanner" id="tabScanner">🩺 Prescription Scanner</button>
+            <button class="nav-tab" data-tab="doctors" id="tabDoctors">👨‍⚕️ Find Doctors</button>
+        </nav>
+
         <!-- Main Content -->
         <main class="main-content">
 
@@ -195,9 +201,81 @@
             </section>
         </main>
 
+        <!-- ============================================================
+             DOCTORS APP TAB
+             ============================================================ -->
+        <main class="main-content" id="doctorsTab" style="display:none;">
+
+            <!-- Search & Filter -->
+            <section style="margin-bottom: 24px;">
+                <div class="card">
+                    <div class="card-header" style="margin-bottom:16px;">
+                        <h2>Find a Specialist</h2>
+                        <p>Search doctors by name or specialty near you</p>
+                    </div>
+                    <div class="doctor-search-row">
+                        <div class="doctor-search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="doctorSearch" class="doctor-search-input" placeholder="Search doctor name or specialty..." />
+                        </div>
+                        <select id="specialtyFilter" class="specialty-select">
+                            <option value="">All Specialties</option>
+                            <option value="General Physician">General Physician</option>
+                            <option value="Cardiologist">Cardiologist</option>
+                            <option value="Dermatologist">Dermatologist</option>
+                            <option value="Pediatrician">Pediatrician</option>
+                            <option value="Orthopedist">Orthopedist</option>
+                            <option value="Neurologist">Neurologist</option>
+                            <option value="Gynecologist">Gynecologist</option>
+                            <option value="Oncologist">Oncologist</option>
+                            <option value="ENT Specialist">ENT Specialist</option>
+                        </select>
+                        <select id="availabilityFilter" class="specialty-select">
+                            <option value="">Any Availability</option>
+                            <option value="Available">Available Now</option>
+                            <option value="On Call">On Call</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Bar -->
+            <div class="doctor-stats" id="doctorStats">
+                <div class="doctor-stat-item">
+                    <span id="statTotal">--</span>
+                    <span>Total Doctors</span>
+                </div>
+                <div class="doctor-stat-item">
+                    <span id="statAvailable" style="color: var(--accent-green);">--</span>
+                    <span>Available Now</span>
+                </div>
+                <div class="doctor-stat-item">
+                    <span id="statHospitals">--</span>
+                    <span>Hospitals</span>
+                </div>
+            </div>
+
+            <!-- Doctor Grid -->
+            <div id="doctorGrid" class="doctor-grid">
+                <div class="doctor-loading" id="doctorLoading">
+                    <div class="spinner" style="width:40px;height:40px;margin:0 auto 16px;"></div>
+                    <p>Locating doctors near you...</p>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Book Appointment Modal -->
+        <div id="bookModal" class="modal-overlay" style="display:none;">
+            <div class="modal-card">
+                <button class="modal-close" id="modalClose">&times;</button>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
-            <p>Built with <span class="heart">&hearts;</span> using VGG16 Transfer Learning &mdash; TensorFlow + FastAPI</p>
+            <p>Built with <span class="heart">&hearts;</span> using VGG16 Transfer Learning &mdash; TensorFlow + Flask</p>
         </footer>
     </div>
 
