@@ -268,7 +268,6 @@ def get_nearby_hospitals():
         enriched_hospitals = []
         
         specialties = ["General Physician", "Cardiologist", "Dermatologist", "Pediatrician", "Orthopedist", "Neurologist", "Gynecologist", "Oncologist", "ENT Specialist"]
-        doctors_names = ["Dr. Smith", "Dr. Johnson", "Dr. Williams", "Dr. Brown", "Dr. Jones", "Dr. Garcia", "Dr. Miller", "Dr. Davis", "Dr. Wilson", "Dr. Taylor"]
         
         for el in elements:
             el_lat = el.get('lat') or el.get('center', {}).get('lat')
@@ -276,30 +275,22 @@ def get_nearby_hospitals():
             name = el.get('tags', {}).get('name', "Medical Facility")
             amenity = el.get('tags', {}).get('amenity', "medical facility")
             
-            # Generate Roster — only include Available doctors
-            roster = []
+            # Build available specialties — no fake doctor names
+            available_specialties = []
             if amenity == "hospital":
-                # Hospitals have all specialties — only show Available doctors
+                # Hospitals cover most specialties — pick available ones (~60% chance each)
                 for spec in specialties:
-                    if random.random() > 0.4:  # ~60% chance doctor is available
-                        roster.append({
-                            "name": random.choice(doctors_names),
-                            "specialty": spec,
-                            "status": "Available"
-                        })
-            else:
-                # Clinics — pick a small subset and only include Available ones
-                clinic_specs = random.sample(specialties, 3)
-                for spec in clinic_specs:
                     if random.random() > 0.4:
-                        roster.append({
-                            "name": random.choice(doctors_names),
-                            "specialty": spec,
-                            "status": "Available"
-                        })
-                
-            # Only include hospitals that actually have available doctors
-            if not roster:
+                        available_specialties.append(spec)
+            else:
+                # Clinics cover a smaller random subset
+                clinic_specs = random.sample(specialties, random.randint(2, 4))
+                for spec in clinic_specs:
+                    if random.random() > 0.3:
+                        available_specialties.append(spec)
+
+            # Skip facilities with no available specialties
+            if not available_specialties:
                 continue
                 
             enriched_hospitals.append({
@@ -309,7 +300,7 @@ def get_nearby_hospitals():
                 "lon": el_lon,
                 "phone": f"+91 {random.randint(7000000000, 9999999999)}",
                 "opd_time": "24 Hours (Emergency)" if amenity == "hospital" else random.choice(["09:00 AM - 05:00 PM", "10:00 AM - 08:00 PM", "08:00 AM - 02:00 PM"]),
-                "roster": roster
+                "available_specialties": available_specialties
             })
             
         return jsonify({

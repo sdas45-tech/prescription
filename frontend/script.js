@@ -452,7 +452,8 @@ btnClearHistory.addEventListener("click", () => {
 });
 
 // ================================================================
-// 6. Doctors App — Tab Navigation & Doctor Finder
+// ================================================================
+// 6. Doctors App — Hospital-wise view with available specialties
 // ================================================================
 
 const SPECIALTIES_ICONS = {
@@ -467,9 +468,9 @@ const SPECIALTIES_ICONS = {
     "ENT Specialist":     "👂"
 };
 
-const RATINGS = [4.2, 4.4, 4.5, 4.7, 4.8, 4.9, 5.0];
+const FACILITY_ICONS = { hospital: "🏥", clinic: "🏨", doctors: "👨‍⚕️" };
 
-let allDoctors = [];
+let allHospitals = [];
 let doctorsLoaded = false;
 
 // Tab switching
@@ -498,7 +499,7 @@ function switchTab(tab) {
     }
 }
 
-// Load doctors from backend
+// Load hospitals from backend
 function loadDoctors() {
     if (!navigator.geolocation) {
         renderDoctorError("Geolocation not supported by your browser.");
@@ -508,149 +509,87 @@ function loadDoctors() {
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        const radius = 10000;
+        const radius = document.getElementById("radiusSelect")?.value || 10000;
 
         try {
             const response = await fetch(`${API_BASE}/api/hospitals?lat=${lat}&lon=${lon}&radius=${radius}`);
             if (!response.ok) throw new Error(`Server returned ${response.status}`);
             const data = await response.json();
 
-            // Flatten all doctors from all hospitals
-            allDoctors = [];
-            const hospitals = data.hospitals || [];
-
-            hospitals.forEach(h => {
-                (h.roster || []).forEach(doc => {
-                    const rating = RATINGS[Math.floor(Math.random() * RATINGS.length)];
-                    allDoctors.push({
-                        name:      doc.name,
-                        specialty: doc.specialty,
-                        status:    doc.status,
-                        hospital:  h.name,
-                        phone:     h.phone,
-                        opd:       h.opd_time,
-                        lat:       h.lat,
-                        lon:       h.lon,
-                        rating:    rating,
-                        icon:      SPECIALTIES_ICONS[doc.specialty] || "👨‍⚕️",
-                        mapLink:   `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`
-                    });
-                });
-            });
-
+            allHospitals = data.hospitals || [];
             doctorsLoaded = true;
-            updateStats(hospitals.length);
-            renderDoctors(allDoctors);
+
+            // Count total available specialties across all hospitals
+            const totalSpecs = allHospitals.reduce((sum, h) => sum + (h.available_specialties || []).length, 0);
+            document.getElementById("statTotal").textContent     = totalSpecs;
+            document.getElementById("statAvailable").textContent = allHospitals.length;
+            document.getElementById("statHospitals").textContent = allHospitals.length;
+
+            renderHospitals(allHospitals);
             setupDoctorFilters();
 
         } catch (err) {
-            renderDoctorError(`Failed to load doctors: ${err.message}`);
+            renderDoctorError(`Failed to load nearby hospitals: ${err.message}`);
         }
     }, () => {
-        renderDoctorError("Location access denied. Please enable location access in your browser settings.");
+        renderDoctorError("Location access denied. Please enable location access to find nearby hospitals.");
     });
 }
 
-function updateStats(hospitalCount) {
-    const total     = allDoctors.length;
-    const available = allDoctors.filter(d => d.status === "Available").length;
-
-    document.getElementById("statTotal").textContent     = total;
-    document.getElementById("statAvailable").textContent = available;
-    document.getElementById("statHospitals").textContent = hospitalCount;
-}
-
-function renderDoctors(doctors) {
+// Render hospital-wise cards
+function renderHospitals(hospitals) {
     const grid = document.getElementById("doctorGrid");
 
-    if (doctors.length === 0) {
+    if (!hospitals || hospitals.length === 0) {
         grid.innerHTML = `
             <div class="no-doctors">
                 <span class="no-doctors-icon">🔍</span>
-                <p>No doctors match your search. Try changing filters.</p>
+                <p>No medical facilities found nearby. Try increasing the radius.</p>
             </div>`;
         return;
     }
 
-    grid.innerHTML = doctors.map((doc, i) => {
-        const stars = "⭐".repeat(Math.floor(doc.rating));
+    grid.innerHTML = hospitals.map((h, i) => {
+        const mapLink  = `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lon}`;
+        const facIcon  = FACILITY_ICONS[h.type] || "🏥";
+        const specs    = h.available_specialties || [];
+
+        const specBadges = specs.map(spec => `
+            <span style="display:inline-flex; align-items:center; gap:4px; background:rgba(139,92,246,0.12);
+                color:var(--accent-purple-light); border:1px solid rgba(139,92,246,0.2);
+                border-radius:20px; padding:4px 10px; font-size:0.72rem; font-weight:600;">
+                ${SPECIALTIES_ICONS[spec] || "💊"} ${spec}
+            </span>`).join("");
+
         return `
-            <div class="doctor-card" style="animation-delay: ${i * 0.05}s;" onclick="openDoctorModal(${i})">
+            <div class="doctor-card" style="animation-delay: ${i * 0.07}s;">
                 <div class="doctor-card-top">
-                    <div class="doctor-avatar">${doc.icon}</div>
+                    <div class="doctor-avatar" style="font-size:1.8rem;">${facIcon}</div>
                     <div class="doctor-info">
-                        <div class="doctor-name">${doc.name}</div>
-                        <div class="doctor-specialty">${doc.specialty}</div>
-                        <div class="doctor-hospital">🏥 ${doc.hospital}</div>
+                        <div class="doctor-name">${h.name}</div>
+                        <div class="doctor-specialty">${h.type.toUpperCase()}</div>
+                        <div class="doctor-hospital">🕐 OPD: ${h.opd_time}</div>
                     </div>
                     <div class="facility-status-badge" style="background:#22c55e22; color:#22c55e; border:1px solid #22c55e44; white-space:nowrap;">
-                        ✅ Available
+                        ✅ Open
                     </div>
                 </div>
 
-                <div class="doctor-status-row">
-                    <div class="doctor-rating">⭐ ${doc.rating.toFixed(1)}</div>
-                    <div class="doctor-opd">🕐 ${doc.opd}</div>
+                <div style="padding: 12px 14px; background:rgba(0,0,0,0.2); border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:10px;">
+                        ✅ Available Specialties (${specs.length})
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        ${specBadges || '<span style="color:var(--text-muted); font-size:0.8rem;">No specialties available right now</span>'}
+                    </div>
                 </div>
 
                 <div class="doctor-actions">
-                    <a href="tel:${doc.phone}" class="btn-action btn-action-call" onclick="event.stopPropagation()">📞 Call</a>
-                    <a href="${doc.mapLink}" target="_blank" class="btn-action btn-action-map" onclick="event.stopPropagation()">📍 Map</a>
-                    <button class="btn-action" onclick="event.stopPropagation(); openBookModal(${i})" style="flex:1; background:rgba(139,92,246,0.12); color:var(--accent-purple-light); border:1px solid rgba(139,92,246,0.25); border-radius:8px; font-weight:600; font-size:0.85rem; cursor:pointer; padding:10px 0; transition:all 0.2s ease;" onmouseover="this.style.background='var(--accent-purple)';this.style.color='white';" onmouseout="this.style.background='rgba(139,92,246,0.12)';this.style.color='var(--accent-purple-light)';">📅 Book</button>
+                    <a href="tel:${h.phone}" class="btn-action btn-action-call">📞 ${h.phone}</a>
+                    <a href="${mapLink}" target="_blank" class="btn-action btn-action-map">📍 Navigate</a>
                 </div>
             </div>`;
     }).join("");
-
-    // store filtered array for modal access
-    window._renderedDoctors = doctors;
-}
-
-function openBookModal(idx) {
-    const doc = (window._renderedDoctors || allDoctors)[idx];
-    if (!doc) return;
-    const modal = document.getElementById("bookModal");
-    document.getElementById("modalContent").innerHTML = `
-        <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-primary); margin-bottom:4px;">Book Appointment</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:24px;">Fill in your details to schedule with <strong style="color:var(--accent-purple-light);">${doc.name}</strong></p>
-
-        <div style="display:flex; align-items:center; gap:14px; padding:14px; background:rgba(0,0,0,0.2); border-radius:12px; margin-bottom:24px; border:1px solid var(--border-color);">
-            <div style="width:48px;height:48px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;font-size:1.4rem;">${doc.icon}</div>
-            <div>
-                <div style="font-weight:700; color:var(--text-primary);">${doc.name}</div>
-                <div style="font-size:0.78rem; color:var(--accent-blue); text-transform:uppercase; letter-spacing:0.05em;">${doc.specialty}</div>
-                <div style="font-size:0.78rem; color:var(--text-muted);">🏥 ${doc.hospital}</div>
-            </div>
-        </div>
-
-        <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px;">
-            <input type="text" placeholder="Your Full Name" style="padding:12px 16px; background:rgba(0,0,0,0.25); border:1px solid var(--border-color); border-radius:10px; color:var(--text-primary); font-family:var(--font); font-size:0.95rem; outline:none; width:100%;" />
-            <input type="tel" placeholder="Your Phone Number" style="padding:12px 16px; background:rgba(0,0,0,0.25); border:1px solid var(--border-color); border-radius:10px; color:var(--text-primary); font-family:var(--font); font-size:0.95rem; outline:none; width:100%;" />
-            <input type="date" style="padding:12px 16px; background:rgba(0,0,0,0.25); border:1px solid var(--border-color); border-radius:10px; color:var(--text-primary); font-family:var(--font); font-size:0.95rem; outline:none; width:100%; color-scheme: dark;" />
-            <select style="padding:12px 16px; background:rgba(0,0,0,0.25); border:1px solid var(--border-color); border-radius:10px; color:var(--text-primary); font-family:var(--font); font-size:0.88rem; outline:none; width:100%;">
-                <option>Morning (9 AM - 12 PM)</option>
-                <option>Afternoon (12 PM - 4 PM)</option>
-                <option>Evening (4 PM - 8 PM)</option>
-            </select>
-        </div>
-
-        <button onclick="confirmBooking('${doc.name}')" style="width:100%; padding:14px; background:var(--gradient-primary); border:none; border-radius:12px; color:white; font-family:var(--font); font-size:1rem; font-weight:700; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(139,92,246,0.4)';" onmouseout="this.style.transform='';this.style.boxShadow='';">
-            ✅ Confirm Appointment
-        </button>`;
-    modal.style.display = "flex";
-}
-
-function openDoctorModal(idx) {
-    openBookModal(idx);
-}
-
-function confirmBooking(docName) {
-    document.getElementById("modalContent").innerHTML = `
-        <div style="text-align:center; padding: 20px 0;">
-            <div style="font-size:4rem; margin-bottom:16px;">✅</div>
-            <h3 style="font-size:1.3rem; font-weight:800; color:var(--accent-green); margin-bottom:8px;">Appointment Requested!</h3>
-            <p style="color:var(--text-muted); line-height:1.6;">Your appointment request with <strong style="color:var(--text-primary);">${docName}</strong> has been submitted. You will receive a confirmation shortly.</p>
-            <button onclick="document.getElementById('bookModal').style.display='none'" style="margin-top:24px; padding:12px 32px; background:var(--gradient-primary); border:none; border-radius:12px; color:white; font-family:var(--font); font-size:0.95rem; font-weight:700; cursor:pointer;">Close</button>
-        </div>`;
 }
 
 document.getElementById("modalClose").addEventListener("click", () => {
@@ -669,27 +608,23 @@ function renderDoctorError(msg) {
 }
 
 function setupDoctorFilters() {
-    const search   = document.getElementById("doctorSearch");
-    const specFilt = document.getElementById("specialtyFilter");
-    const availFilt = document.getElementById("availabilityFilter");
+    const search    = document.getElementById("doctorSearch");
+    const specFilt  = document.getElementById("specialtyFilter");
 
     function applyFilters() {
-        const q     = search.value.toLowerCase();
-        const spec  = specFilt.value;
-        const avail = availFilt.value;
+        const q    = search.value.toLowerCase();
+        const spec = specFilt.value;
 
-        const filtered = allDoctors.filter(doc => {
-            const matchQ    = !q || doc.name.toLowerCase().includes(q) || doc.specialty.toLowerCase().includes(q) || doc.hospital.toLowerCase().includes(q);
-            const matchSpec  = !spec  || doc.specialty === spec;
-            const matchAvail = !avail || doc.status === avail;
-            return matchQ && matchSpec && matchAvail;
+        const filtered = allHospitals.filter(h => {
+            const specs = h.available_specialties || [];
+            const matchQ    = !q || h.name.toLowerCase().includes(q) || specs.some(s => s.toLowerCase().includes(q));
+            const matchSpec = !spec || specs.includes(spec);
+            return matchQ && matchSpec;
         });
 
-        renderDoctors(filtered);
+        renderHospitals(filtered);
     }
 
     search.addEventListener("input", applyFilters);
     specFilt.addEventListener("change", applyFilters);
-    availFilt.addEventListener("change", applyFilters);
 }
-
