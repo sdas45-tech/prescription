@@ -211,12 +211,12 @@
                 <div class="card">
                     <div class="card-header" style="margin-bottom:16px;">
                         <h2>Find a Specialist</h2>
-                        <p>Search doctors by name or specialty near you</p>
+                        <p>Search hospitals by name or filter by specialty near you</p>
                     </div>
                     <div class="doctor-search-row">
                         <div class="doctor-search-box">
                             <span class="search-icon">🔍</span>
-                            <input type="text" id="doctorSearch" class="doctor-search-input" placeholder="Search doctor name or specialty..." />
+                            <input type="text" id="doctorSearch" class="doctor-search-input" placeholder="Search hospital or specialty..." />
                         </div>
                         <select id="specialtyFilter" class="specialty-select">
                             <option value="">All Specialties</option>
@@ -230,10 +230,30 @@
                             <option value="Oncologist">Oncologist</option>
                             <option value="ENT Specialist">ENT Specialist</option>
                         </select>
-                        <select id="availabilityFilter" class="specialty-select">
-                            <option value="">All Available Doctors</option>
-                            <option value="Available">Available Now</option>
-                        </select>
+                    </div>
+
+                    <!-- Radius Range Slider -->
+                    <div class="radius-slider-wrap">
+                        <div class="radius-slider-header">
+                            <span class="radius-label">&#128205; Search Radius</span>
+                            <span class="radius-value" id="doctorRadiusLabel">5 km</span>
+                        </div>
+                        <input
+                            type="range"
+                            id="doctorRadiusSlider"
+                            min="1"
+                            max="20"
+                            value="5"
+                            step="1"
+                            class="radius-range-input"
+                        />
+                        <div class="radius-ticks">
+                            <span>1 km</span>
+                            <span>5 km</span>
+                            <span>10 km</span>
+                            <span>15 km</span>
+                            <span>20 km</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -242,15 +262,15 @@
             <div class="doctor-stats" id="doctorStats">
                 <div class="doctor-stat-item">
                     <span id="statTotal">--</span>
-                    <span>Total Doctors</span>
+                    <span>Specialties Available</span>
                 </div>
                 <div class="doctor-stat-item">
                     <span id="statAvailable" style="color: var(--accent-green);">--</span>
-                    <span>Available Now</span>
+                    <span>Hospitals Found</span>
                 </div>
                 <div class="doctor-stat-item">
                     <span id="statHospitals">--</span>
-                    <span>Hospitals</span>
+                    <span>Search Radius</span>
                 </div>
             </div>
 

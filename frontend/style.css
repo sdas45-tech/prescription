@@ -1367,3 +1367,89 @@ body {
     .app-nav { flex-direction: column; gap: 4px; }
     .nav-tab { padding: 10px; }
 }
+
+/* ── Radius Range Slider ── */
+.radius-slider-wrap {
+    margin-top: 20px;
+    padding: 16px 0 4px;
+    border-top: 1px solid var(--border-color);
+}
+
+.radius-slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.radius-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.radius-value {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--accent-purple-light);
+    background: rgba(139, 92, 246, 0.12);
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    min-width: 60px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.radius-range-input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 4px;
+    background: linear-gradient(
+        to right,
+        var(--accent-purple) 0%,
+        var(--accent-purple) var(--slider-pct, 20%),
+        rgba(255, 255, 255, 0.1) var(--slider-pct, 20%),
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    outline: none;
+    cursor: pointer;
+}
+
+.radius-range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2), 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.radius-range-input::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.radius-range-input::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+}
+
+.radius-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    padding: 0 4px;
+}

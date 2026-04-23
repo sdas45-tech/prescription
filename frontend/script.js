@@ -457,8 +457,36 @@ let doctorsLoaded = false;
 document.getElementById("tabScanner").addEventListener("click", () => switchTab("scanner"));
 document.getElementById("tabDoctors").addEventListener("click", () => {
     switchTab("doctors");
-    if (!doctorsLoaded) loadDoctors();
+    if (!doctorsLoaded) {
+        initDoctorSlider();
+        loadDoctors();
+    }
 });
+
+// Radius slider setup
+function initDoctorSlider() {
+    const slider = document.getElementById("doctorRadiusSlider");
+    const label  = document.getElementById("doctorRadiusLabel");
+    if (!slider) return;
+
+    function updateSlider() {
+        const val = parseInt(slider.value);
+        const pct = ((val - 1) / (20 - 1)) * 100;
+        slider.style.setProperty("--slider-pct", pct + "%");
+        label.textContent = val + " km";
+    }
+    updateSlider();
+
+    let debounceTimer;
+    slider.addEventListener("input", () => {
+        updateSlider();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            doctorsLoaded = false; // force reload
+            loadDoctors();
+        }, 600); // reload 600ms after user stops sliding
+    });
+}
 
 function switchTab(tab) {
     const scannerMain = document.querySelector(".main-content:not(#doctorsTab)");
@@ -489,7 +517,15 @@ function loadDoctors() {
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        const radius = document.getElementById("radiusSelect")?.value || 10000;
+        const sliderKm = parseInt(document.getElementById("doctorRadiusSlider")?.value || 5);
+        const radius   = sliderKm * 1000;
+
+        // Show loading state
+        document.getElementById("doctorGrid").innerHTML = `
+            <div class="doctor-loading">
+                <div class="spinner" style="width:40px;height:40px;margin:0 auto 16px;"></div>
+                <p>Searching within ${sliderKm} km...</p>
+            </div>`;
 
         try {
             const response = await fetch(`${API_BASE}/api/hospitals?lat=${lat}&lon=${lon}&radius=${radius}`);
@@ -503,7 +539,7 @@ function loadDoctors() {
             const totalSpecs = allHospitals.reduce((sum, h) => sum + (h.available_specialties || []).length, 0);
             document.getElementById("statTotal").textContent     = totalSpecs;
             document.getElementById("statAvailable").textContent = allHospitals.length;
-            document.getElementById("statHospitals").textContent = allHospitals.length;
+            document.getElementById("statHospitals").textContent = sliderKm + " km";
 
             renderHospitals(allHospitals);
             setupDoctorFilters();
