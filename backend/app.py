@@ -276,25 +276,31 @@ def get_nearby_hospitals():
             name = el.get('tags', {}).get('name', "Medical Facility")
             amenity = el.get('tags', {}).get('amenity', "medical facility")
             
-            # Generate Roster
+            # Generate Roster — only include Available doctors
             roster = []
             if amenity == "hospital":
-                # Hospitals have all specialties
+                # Hospitals have all specialties — only show Available doctors
                 for spec in specialties:
-                    roster.append({
-                        "name": random.choice(doctors_names),
-                        "specialty": spec,
-                        "status": "Available" if random.random() > 0.4 else "On Call"
-                    })
+                    if random.random() > 0.4:  # ~60% chance doctor is available
+                        roster.append({
+                            "name": random.choice(doctors_names),
+                            "specialty": spec,
+                            "status": "Available"
+                        })
             else:
-                # Clinics have a smaller subset of specialties
+                # Clinics — pick a small subset and only include Available ones
                 clinic_specs = random.sample(specialties, 3)
                 for spec in clinic_specs:
-                    roster.append({
-                        "name": random.choice(doctors_names),
-                        "specialty": spec,
-                        "status": "Available" if random.random() > 0.4 else "On Call"
-                    })
+                    if random.random() > 0.4:
+                        roster.append({
+                            "name": random.choice(doctors_names),
+                            "specialty": spec,
+                            "status": "Available"
+                        })
+                
+            # Only include hospitals that actually have available doctors
+            if not roster:
+                continue
                 
             enriched_hospitals.append({
                 "name": name,

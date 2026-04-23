@@ -573,7 +573,6 @@ function renderDoctors(doctors) {
     }
 
     grid.innerHTML = doctors.map((doc, i) => {
-        const statusColor = doc.status === "Available" ? "#22c55e" : "#f59e0b";
         const stars = "⭐".repeat(Math.floor(doc.rating));
         return `
             <div class="doctor-card" style="animation-delay: ${i * 0.05}s;" onclick="openDoctorModal(${i})">
@@ -584,8 +583,8 @@ function renderDoctors(doctors) {
                         <div class="doctor-specialty">${doc.specialty}</div>
                         <div class="doctor-hospital">🏥 ${doc.hospital}</div>
                     </div>
-                    <div class="facility-status-badge" style="background:${statusColor}22; color:${statusColor}; border:1px solid ${statusColor}44; white-space:nowrap;">
-                        ${doc.status}
+                    <div class="facility-status-badge" style="background:#22c55e22; color:#22c55e; border:1px solid #22c55e44; white-space:nowrap;">
+                        ✅ Available
                     </div>
                 </div>
 
