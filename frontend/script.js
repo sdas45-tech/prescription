@@ -3,7 +3,12 @@
  * Updated to align with train.py v2 (accuracy report support)
  */
 
-const API_BASE = window.location.origin;
+// If running locally, connect to your local Python server. 
+// If deployed to Vercel, connect to your hosted backend (e.g., Render, Railway).
+const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const API_BASE = isLocalhost 
+    ? "http://127.0.0.1:8000" 
+    : "https://your-backend-url.onrender.com"; // <-- Change this to your deployed backend URL!
 
 // -- DOM Elements --
 const dropZone        = document.getElementById("dropZone");
