@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="VGG16-based Prescription Image Classifier - Upload an image to detect if it's a prescription or not.">
-    <title>Prescription Classifier - VGG16 AI</title>
+    <meta name="description" content="PharmaLense — AI-powered prescription analysis, find nearby hospitals and specialist doctors instantly.">
+    <title>PharmaLense — AI Medical Assistant</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     
     <!-- Leaflet for OpenStreetMap -->
@@ -15,12 +15,16 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <!-- Animated Background -->
+    <!-- Animated Background Orbs -->
     <div class="bg-animation">
         <div class="bg-orb bg-orb-1"></div>
         <div class="bg-orb bg-orb-2"></div>
         <div class="bg-orb bg-orb-3"></div>
+        <div class="bg-orb bg-orb-4"></div>
     </div>
+
+    <!-- Floating Particles -->
+    <div class="particles" id="particles"></div>
 
     <div class="app-container">
         <!-- Header -->
@@ -28,20 +32,33 @@
             <div class="header-glow"></div>
             <div class="header-content">
                 <div class="logo-section">
-                    <div class="logo-icon">
+                    <div class="logo-icon pharma-logo">
+                        <!-- PharmaLense Logo -->
                         <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="6" y="14" width="36" height="24" rx="4" stroke="currentColor" stroke-width="2.5" fill="none"/>
-                            <path d="M6 20h36" stroke="currentColor" stroke-width="2" opacity="0.5"/>
-                            <path d="M14 26h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                            <path d="M14 30h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-                            <path d="M30 24l4 4 8-8" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="38" cy="10" r="6" fill="#8b5cf6" opacity="0.8"/>
-                            <text x="38" y="13" text-anchor="middle" fill="white" font-size="8" font-weight="bold">AI</text>
+                            <!-- Lens ring -->
+                            <circle cx="22" cy="22" r="13" stroke="url(#lg1)" stroke-width="2.5" fill="none"/>
+                            <!-- Crosshair -->
+                            <path d="M22 12v4M22 28v4M12 22h4M28 22h4" stroke="url(#lg1)" stroke-width="2" stroke-linecap="round"/>
+                            <!-- Rx symbol inside lens -->
+                            <text x="16" y="26" fill="url(#lg1)" font-size="11" font-weight="900" font-family="Outfit, Inter, sans-serif">Rx</text>
+                            <!-- AI spark -->
+                            <path d="M34 8l1.5 3 3 1.5-3 1.5L34 17l-1.5-3-3-1.5 3-1.5z" fill="#a78bfa"/>
+                            <!-- Green check -->
+                            <circle cx="36" cy="36" r="7" fill="#22c55e"/>
+                            <path d="M32.5 36l2.5 2.5 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <defs>
+                                <linearGradient id="lg1" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#8b5cf6"/>
+                                    <stop offset="100%" stop-color="#3b82f6"/>
+                                </linearGradient>
+                            </defs>
                         </svg>
                     </div>
                     <div>
-                        <h1 class="app-title">Prescription Classifier</h1>
-                        <p class="app-subtitle">Powered by VGG16 Deep Learning</p>
+                        <h1 class="app-title">
+                            <span class="brand-pharma">Pharma</span><span class="brand-lense">Lense</span>
+                        </h1>
+                        <p class="app-subtitle">AI-Powered Medical Intelligence</p>
                     </div>
                 </div>
                 <div class="header-status" id="modelStatus">
@@ -53,8 +70,12 @@
 
         <!-- Navigation Tabs -->
         <nav class="app-nav" id="appNav">
-            <button class="nav-tab active" data-tab="scanner" id="tabScanner">🩺 Prescription Scanner</button>
-            <button class="nav-tab" data-tab="doctors" id="tabDoctors">👨‍⚕️ Find Doctors</button>
+            <button class="nav-tab active" data-tab="scanner" id="tabScanner">
+                <span class="nav-icon">🩺</span> Prescription Scanner
+            </button>
+            <button class="nav-tab" data-tab="doctors" id="tabDoctors">
+                <span class="nav-icon">👨‍⚕️</span> Find Doctors
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -294,10 +315,31 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Built with <span class="heart">&hearts;</span> using VGG16 Transfer Learning &mdash; TensorFlow + Flask</p>
+            <p>Built with <span class="heart">&hearts;</span> by <strong style="background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">PharmaLense</strong> &mdash; AI Medical Intelligence</p>
         </footer>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Floating particles
+        (function(){
+            const container = document.getElementById('particles');
+            if (!container) return;
+            for (let i = 0; i < 22; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.cssText = `
+                    left: ${Math.random()*100}vw;
+                    top: ${Math.random()*100}vh;
+                    width: ${Math.random()*3+1}px;
+                    height: ${Math.random()*3+1}px;
+                    animation-duration: ${Math.random()*15+10}s;
+                    animation-delay: ${Math.random()*8}s;
+                    opacity: ${Math.random()*0.4+0.1};
+                `;
+                container.appendChild(p);
+            }
+        })();
+    </script>
 </body>
 </html>
