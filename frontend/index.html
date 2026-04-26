@@ -169,13 +169,63 @@
                         <!-- AI Analysis -->
                         <div class="result-details analysis-section" id="aiAnalysisBox" style="display:none; margin-top:20px;">
                             <div class="detail-row" style="border-bottom:none; flex-direction:column; align-items:flex-start; gap:10px; background: transparent; padding: 0;">
-                                <span class="detail-label" style="display:flex; align-items:center; gap:8px; font-size: 1rem; color: var(--accent-purple-light);">
-                                    <span>&#10024;</span> AI Layman Translation
-                                </span>
-                                <div id="aiAnalysisText" class="ai-analysis-container ai-analysis-content" style="width:100%; box-sizing: border-box;">
-                                    --
+
+                                <!-- Header row: label + Language selector + Voice button -->
+                                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;">
+                                    <span class="detail-label" style="display:flex; align-items:center; gap:8px; font-size:1rem; color:var(--accent-purple-light);">
+                                        <span>&#10024;</span> AI Layman Translation
+                                    </span>
+                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <!-- Language Selector -->
+                                        <select id="languageSelect" class="feature-select" title="Translate to language">
+                                            <option value="English">🌐 English</option>
+                                            <option value="Hindi">🇮🇳 Hindi</option>
+                                            <option value="Bengali">🇧🇩 Bengali</option>
+                                            <option value="Tamil">Tamil</option>
+                                            <option value="Telugu">Telugu</option>
+                                            <option value="Marathi">Marathi</option>
+                                            <option value="Gujarati">Gujarati</option>
+                                            <option value="Kannada">Kannada</option>
+                                            <option value="Malayalam">Malayalam</option>
+                                            <option value="Punjabi">Punjabi</option>
+                                            <option value="Urdu">اردو Urdu</option>
+                                            <option value="Spanish">🇪🇸 Spanish</option>
+                                            <option value="French">🇫🇷 French</option>
+                                            <option value="German">🇩🇪 German</option>
+                                            <option value="Arabic">🇸🇦 Arabic</option>
+                                            <option value="Chinese">🇨🇳 Chinese</option>
+                                            <option value="Japanese">🇯🇵 Japanese</option>
+                                        </select>
+                                        <!-- Voice Button -->
+                                        <button id="voiceBtn" class="feature-btn voice-btn" title="Listen to analysis" onclick="speakAnalysis()">
+                                            🔊 <span class="feature-btn-label">Listen</span>
+                                        </button>
+                                    </div>
                                 </div>
+
+                                <div id="aiAnalysisText" class="ai-analysis-container ai-analysis-content" style="width:100%; box-sizing:border-box;">--</div>
+
+                                <!-- Translate loading indicator -->
+                                <div id="translateLoader" style="display:none; font-size:0.82rem; color:var(--text-muted); padding:6px 0;">⏳ Translating...</div>
                             </div>
+                        </div>
+
+                        <!-- Drug Interaction Checker -->
+                        <div id="interactionPanel" class="feature-panel" style="display:none; margin-top:20px;">
+                            <div class="feature-panel-header">
+                                <span>⚠️ Drug Interaction Check</span>
+                                <span id="interactionBadge" class="feature-badge badge-warning">Checking...</span>
+                            </div>
+                            <div id="interactionResult" class="feature-panel-body">Analyzing medicine combinations...</div>
+                        </div>
+
+                        <!-- Allergy Alert Panel -->
+                        <div id="allergyPanel" class="feature-panel" style="display:none; margin-top:16px;">
+                            <div class="feature-panel-header">
+                                <span>🚨 Allergy Alert</span>
+                                <span id="allergyBadge" class="feature-badge badge-danger">Checking...</span>
+                            </div>
+                            <div id="allergyResult" class="feature-panel-body">Checking against your allergy profile...</div>
                         </div>
                     </div>
 
@@ -184,6 +234,23 @@
                     </button>
                 </div>
             </section>
+
+            <!-- Allergy Manager Card (persistent, above map) -->
+            <section id="allergyManagerSection" class="allergy-manager-section">
+                <div class="card">
+                    <div class="card-header" style="margin-bottom:14px;">
+                        <h2>🚨 My Allergy Profile</h2>
+                        <p>Save your known allergies — PharmaLense will auto-alert you when scanning prescriptions</p>
+                    </div>
+                    <div class="allergy-tags-wrap" id="allergyTags"></div>
+                    <div class="allergy-input-row">
+                        <input type="text" id="allergyInput" class="allergy-text-input" placeholder="Type an allergy (e.g. Penicillin, Sulfa, Latex)..." />
+                        <button class="feature-btn" id="addAllergyBtn" onclick="addAllergy()">+ Add</button>
+                    </div>
+                </div>
+            </section>
+
+
 
             <!-- Map Section (Visible only when it's a prescription) -->
             <section class="map-section" id="mapSection" style="display:none; margin-bottom: 24px;">

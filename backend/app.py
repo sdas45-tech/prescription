@@ -354,6 +354,150 @@ def get_nearby_hospitals():
         return jsonify({"error": str(e)}), 500
 
 
+
+# ---------------------------------------------------------------
+# Helper: call Gemini with a text prompt
+# ---------------------------------------------------------------
+def gemini_text(prompt: str) -> str:
+    """Send a plain-text prompt to Gemini and return the response text."""
+    load_dotenv(override=True)
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key or key == "your_api_key_here":
+        return None, "no_key"
+
+    try:
+        if GEMINI_SDK == "new":
+            client = new_genai.Client(api_key=key)
+            resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+            return resp.text, None
+        elif GEMINI_SDK == "old":
+            old_genai.configure(api_key=key)
+            gm = old_genai.GenerativeModel("gemini-2.5-flash")
+            return gm.generate_content(prompt).text, None
+        else:
+            return None, "no_sdk"
+    except Exception as e:
+        return None, str(e)
+
+
+# ---------------------------------------------------------------
+# New Feature Endpoints
+# ---------------------------------------------------------------
+
+@app.route("/api/check-interactions", methods=["POST"])
+def check_interactions():
+    """
+    Check drug-drug interactions for a list of medicine names.
+    Body JSON: { "medicines": ["Aspirin", "Warfarin", ...] }
+    """
+    data = request.get_json(silent=True) or {}
+    medicines = data.get("medicines", [])
+
+    if not medicines or len(medicines) < 2:
+        return jsonify({"error": "Please provide at least 2 medicine names to check interactions."}), 400
+
+    med_list = ", ".join(medicines)
+    prompt = (
+        f"You are a clinical pharmacist. A patient is taking the following medicines: {med_list}.\n\n"
+        "Please analyze all possible drug-drug interactions between these medicines. For each interaction found:\n"
+        "1. **Medicines involved** — which two (or more) medicines interact.\n"
+        "2. **Severity** — label it as 🔴 Severe, 🟡 Moderate, or 🟢 Minor.\n"
+        "3. **What happens** — explain in plain language what the interaction does to the body.\n"
+        "4. **What to do** — advise whether to avoid, monitor, or adjust timing.\n\n"
+        "If no significant interactions exist, clearly state that. "
+        "Format with clear headings and bullet points. Keep it simple enough for a patient to understand."
+    )
+
+    result, error = gemini_text(prompt)
+    if error == "no_key":
+        return jsonify({"warning": "⚠️ Gemini API key not configured. Add GEMINI_API_KEY to backend/.env"}), 503
+    if error:
+        return jsonify({"error": f"AI analysis failed: {error}"}), 500
+
+    return jsonify({"interactions": result, "medicines_checked": medicines})
+
+
+@app.route("/api/check-allergies", methods=["POST"])
+def check_allergies():
+    """
+    Check if any medicines conflict with user's known allergies.
+    Body JSON: { "medicines": ["Amoxicillin", ...], "allergies": ["Penicillin", "Sulfa"] }
+    """
+    data = request.get_json(silent=True) or {}
+    medicines = data.get("medicines", [])
+    allergies = data.get("allergies", [])
+
+    if not medicines:
+        return jsonify({"error": "No medicines provided"}), 400
+    if not allergies:
+        return jsonify({"alerts": [], "message": "No allergies on file to check against."}), 200
+
+    med_list    = ", ".join(medicines)
+    allergy_list = ", ".join(allergies)
+
+    prompt = (
+        f"You are a clinical pharmacist performing an allergy safety check.\n\n"
+        f"Patient's known allergies: {allergy_list}\n"
+        f"Prescribed medicines: {med_list}\n\n"
+        "For each medicine, check if it could cause an allergic reaction given the patient's known allergies, "
+        "including cross-reactivity (e.g., Penicillin allergy → Amoxicillin reaction).\n\n"
+        "For each potential conflict:\n"
+        "1. **Medicine** — the name of the medicine at risk.\n"
+        "2. **Allergy conflict** — which known allergy it conflicts with.\n"
+        "3. **Risk level** — 🔴 High Risk or 🟡 Possible Cross-Reaction.\n"
+        "4. **Recommendation** — what the patient should tell their doctor immediately.\n\n"
+        "If no allergy conflicts are found, clearly state 'No allergy conflicts detected — safe to take.' "
+        "Keep language simple and clear."
+    )
+
+    result, error = gemini_text(prompt)
+    if error == "no_key":
+        return jsonify({"warning": "⚠️ Gemini API key not configured. Add GEMINI_API_KEY to backend/.env"}), 503
+    if error:
+        return jsonify({"error": f"AI analysis failed: {error}"}), 500
+
+    return jsonify({"allergy_report": result, "allergies_checked": allergies, "medicines_checked": medicines})
+
+
+@app.route("/api/translate", methods=["POST"])
+def translate_text():
+    """
+    Translate prescription analysis text into a target language.
+    Body JSON: { "text": "...", "language": "Hindi" }
+    """
+    data = request.get_json(silent=True) or {}
+    text     = data.get("text", "").strip()
+    language = data.get("language", "English").strip()
+
+    SUPPORTED_LANGUAGES = [
+        "English", "Hindi", "Bengali", "Tamil", "Telugu", "Marathi",
+        "Gujarati", "Kannada", "Malayalam", "Punjabi", "Urdu",
+        "Spanish", "French", "German", "Arabic", "Chinese", "Japanese"
+    ]
+
+    if not text:
+        return jsonify({"error": "No text provided to translate"}), 400
+    if language == "English":
+        return jsonify({"translated": text, "language": "English"})
+    if language not in SUPPORTED_LANGUAGES:
+        return jsonify({"error": f"Unsupported language. Supported: {SUPPORTED_LANGUAGES}"}), 400
+
+    prompt = (
+        f"Translate the following medical prescription analysis into {language}. "
+        "Keep all medical terms accurate. Maintain the formatting (bullet points, bold text). "
+        "Only return the translated text — do not add any explanation or commentary.\n\n"
+        f"Text to translate:\n{text}"
+    )
+
+    result, error = gemini_text(prompt)
+    if error == "no_key":
+        return jsonify({"warning": "⚠️ Gemini API key not configured. Add GEMINI_API_KEY to backend/.env"}), 503
+    if error:
+        return jsonify({"error": f"Translation failed: {error}"}), 500
+
+    return jsonify({"translated": result, "language": language})
+
+
 # ---------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------

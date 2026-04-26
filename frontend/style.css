@@ -1596,3 +1596,188 @@ body {
     0%   { background-position: 0% center; }
     100% { background-position: 200% center; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   New Features: Drug Interactions, Allergy, Language, Voice
+   ════════════════════════════════════════════════════════════ */
+
+/* Feature panel (interactions + allergy) */
+.feature-panel {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    animation: slideUp 0.4s ease;
+}
+
+.feature-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.feature-panel-body {
+    padding: 16px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.feature-panel-body strong { color: var(--text-primary); }
+
+/* Feature badge pills */
+.feature-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    letter-spacing: 0.03em;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-ok {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* Language selector */
+.feature-select {
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.8rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.feature-select:hover,
+.feature-select:focus {
+    border-color: var(--border-glow);
+}
+
+/* Feature buttons (voice etc) */
+.feature-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--accent-purple-light);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.feature-btn:hover {
+    background: var(--accent-purple);
+    color: white;
+    border-color: var(--accent-purple);
+    transform: translateY(-1px);
+}
+
+.voice-btn-active {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    animation: pulseBorder 1.2s ease-in-out infinite;
+}
+
+@keyframes pulseBorder {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+    50%       { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+
+/* Allergy Manager Section */
+.allergy-manager-section {
+    margin-bottom: 24px;
+}
+
+.allergy-tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    min-height: 36px;
+}
+
+.allergy-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-full);
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    animation: slideUp 0.25s ease;
+}
+
+.allergy-tag button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+}
+
+.allergy-tag button:hover { opacity: 1; }
+
+.allergy-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.allergy-text-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 0.88rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.allergy-text-input::placeholder { color: var(--text-muted); }
+
+.allergy-text-input:focus {
+    border-color: var(--border-glow);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}

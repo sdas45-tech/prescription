@@ -246,22 +246,41 @@ function showResults(data) {
     
     if (isPrescription && prediction.layman_explanation) {
         aiAnalysisBox.style.display = "block";
-        
+
+        // Store raw text for language switching and voice output
+        const rawText = prediction.layman_explanation;
+        window._rawAiAnalysis = rawText;
+
+        // Reset language selector to English on each new scan
+        const langSel = document.getElementById("languageSelect");
+        if (langSel) langSel.value = "English";
+
+        // Reset interaction/allergy panels
+        document.getElementById("interactionPanel").style.display = "none";
+        document.getElementById("allergyPanel").style.display     = "none";
+
         // Simple markdown parsing for Gemini response
-        let formattedText = prediction.layman_explanation
+        let formattedText = rawText
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n\*/g, '<br>• ')
             .replace(/\n\-/g, '<br>• ')
             .replace(/\n/g, '<br>');
-            
+
         aiAnalysisText.innerHTML = formattedText;
-        
+
         // Show Map Section and find hospitals
         document.getElementById("mapSection").style.display = "block";
         initMapAndFindHospitals();
+
+        // Run drug interaction + allergy safety checks
+        runSafetyChecks(rawText);
+
     } else {
         aiAnalysisBox.style.display = "none";
-        document.getElementById("mapSection").style.display = "none";
+        document.getElementById("mapSection").style.display     = "none";
+        document.getElementById("interactionPanel").style.display = "none";
+        document.getElementById("allergyPanel").style.display    = "none";
+        window._rawAiAnalysis = null;
     }
 }
 
@@ -432,9 +451,212 @@ btnClearHistory.addEventListener("click", () => {
 });
 
 // ================================================================
+// 6. New Features: Voice Output, Language, Allergies, Interactions
 // ================================================================
-// 6. Doctors App — Hospital-wise view with available specialties
+
+// --- Allergy Manager (localStorage) ---
+let userAllergies = JSON.parse(localStorage.getItem("pharma_allergies") || "[]");
+
+function renderAllergyTags() {
+    const wrap = document.getElementById("allergyTags");
+    if (!wrap) return;
+    if (userAllergies.length === 0) {
+        wrap.innerHTML = `<span style="font-size:0.82rem; color:var(--text-muted);">No allergies saved yet.</span>`;
+        return;
+    }
+    wrap.innerHTML = userAllergies.map((a, i) => `
+        <span class="allergy-tag">
+            🚨 ${a}
+            <button onclick="removeAllergy(${i})" title="Remove">×</button>
+        </span>`).join("");
+}
+
+function addAllergy() {
+    const input = document.getElementById("allergyInput");
+    const val   = input.value.trim();
+    if (!val) return;
+    if (!userAllergies.includes(val)) {
+        userAllergies.push(val);
+        localStorage.setItem("pharma_allergies", JSON.stringify(userAllergies));
+    }
+    input.value = "";
+    renderAllergyTags();
+}
+
+function removeAllergy(idx) {
+    userAllergies.splice(idx, 1);
+    localStorage.setItem("pharma_allergies", JSON.stringify(userAllergies));
+    renderAllergyTags();
+}
+
+// Allow Enter key to add allergy
+document.getElementById("allergyInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addAllergy();
+});
+
+renderAllergyTags(); // init on load
+
+// --- Voice Output (Web Speech API) ---
+let isSpeaking = false;
+
+function speakAnalysis() {
+    const btn  = document.getElementById("voiceBtn");
+    const text = document.getElementById("aiAnalysisText")?.innerText || "";
+
+    if (!text || text === "--") return;
+
+    if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        isSpeaking = false;
+        btn.innerHTML = `🔊 <span class="feature-btn-label">Listen</span>`;
+        btn.classList.remove("voice-btn-active");
+        return;
+    }
+
+    const lang    = document.getElementById("languageSelect")?.value || "English";
+    const langMap = {
+        "Hindi": "hi-IN", "Bengali": "bn-IN", "Tamil": "ta-IN", "Telugu": "te-IN",
+        "Marathi": "mr-IN", "Gujarati": "gu-IN", "Kannada": "kn-IN",
+        "Malayalam": "ml-IN", "Punjabi": "pa-IN", "Urdu": "ur-PK",
+        "Spanish": "es-ES", "French": "fr-FR", "German": "de-DE",
+        "Arabic": "ar-SA", "Chinese": "zh-CN", "Japanese": "ja-JP",
+        "English": "en-US"
+    };
+
+    const utterance  = new SpeechSynthesisUtterance(text);
+    utterance.lang   = langMap[lang] || "en-US";
+    utterance.rate   = 0.9;
+    utterance.pitch  = 1;
+
+    utterance.onstart = () => {
+        isSpeaking = true;
+        btn.innerHTML = `⏹ <span class="feature-btn-label">Stop</span>`;
+        btn.classList.add("voice-btn-active");
+    };
+    utterance.onend = utterance.onerror = () => {
+        isSpeaking = false;
+        btn.innerHTML = `🔊 <span class="feature-btn-label">Listen</span>`;
+        btn.classList.remove("voice-btn-active");
+    };
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+}
+
+// --- Multi-Language Translation ---
+document.getElementById("languageSelect")?.addEventListener("change", async function () {
+    const lang = this.value;
+    const rawText = window._rawAiAnalysis;
+    if (!rawText || rawText === "--") return;
+
+    const loader = document.getElementById("translateLoader");
+    const box    = document.getElementById("aiAnalysisText");
+
+    if (lang === "English") {
+        box.innerHTML = marked ? marked.parse(rawText) : rawText;
+        return;
+    }
+
+    loader.style.display = "block";
+    try {
+        const resp = await fetch(`${API_BASE}/api/translate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: rawText, language: lang })
+        });
+        const data = await resp.json();
+        if (data.translated) {
+            box.innerHTML = marked ? marked.parse(data.translated) : data.translated;
+        } else {
+            box.innerHTML = `<span style="color:var(--accent-amber);">${data.warning || data.error || "Translation failed."}</span>`;
+        }
+    } catch (e) {
+        box.innerHTML = `<span style="color:var(--accent-red);">Translation error: ${e.message}</span>`;
+    } finally {
+        loader.style.display = "none";
+    }
+});
+
+// --- Extract medicine names from AI analysis text ---
+function extractMedicineNames(text) {
+    if (!text) return [];
+    // Heuristic: match capitalized words near dosage patterns (mg, ml, tablet, capsule)
+    const matches = text.match(/\b[A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?\b(?=[\s\S]{0,60}?(?:mg|ml|tablet|capsule|dose|daily|twice|thrice|morning|evening))/gi) || [];
+    // Deduplicate and filter short common words
+    const stopWords = new Set(["The","This","Please","After","Before","You","Your","For","With","Take","Each","And","Has","Are","Not","Any","Its","How","When","That","They","Have","Been","Will","Can","Also","Such","More","All","From","Into","What","About","Some","Than","Then","Both","Only","Very","Most","Much","Even","Just","Does","Same","High","Low","Risk","Side","Drug","Help","Note","Sign","Tell","Food","Blood","Heart","Body","Time","Once","Day","Week","Month","Year","Days","Use","Used","May","Possible","Common","If"]);
+    return [...new Set(matches.filter(m => m.length > 3 && !stopWords.has(m)))].slice(0, 12);
+}
+
+// --- Run Interaction + Allergy checks after a prescription is analysed ---
+async function runSafetyChecks(aiText) {
+    const medicines = extractMedicineNames(aiText);
+    if (medicines.length < 1) return;
+
+    // ---- Drug Interaction Check ----
+    if (medicines.length >= 2) {
+        const intPanel = document.getElementById("interactionPanel");
+        const intResult = document.getElementById("interactionResult");
+        const intBadge  = document.getElementById("interactionBadge");
+        intPanel.style.display = "block";
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/check-interactions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ medicines })
+            });
+            const data = await resp.json();
+            if (data.interactions) {
+                const hasSevere = data.interactions.includes("🔴");
+                intBadge.textContent  = hasSevere ? "⚠️ Warnings Found" : "✅ Checked";
+                intBadge.className    = `feature-badge ${hasSevere ? "badge-danger" : "badge-ok"}`;
+                intResult.innerHTML   = marked ? marked.parse(data.interactions) : data.interactions;
+            } else {
+                intBadge.textContent  = "⚠️ Unavailable";
+                intBadge.className    = "feature-badge badge-warning";
+                intResult.textContent = data.warning || data.error || "Could not check interactions.";
+            }
+        } catch (e) {
+            document.getElementById("interactionBadge").textContent = "Error";
+            document.getElementById("interactionResult").textContent = e.message;
+        }
+    }
+
+    // ---- Allergy Check ----
+    if (userAllergies.length > 0) {
+        const algPanel  = document.getElementById("allergyPanel");
+        const algResult = document.getElementById("allergyResult");
+        const algBadge  = document.getElementById("allergyBadge");
+        algPanel.style.display = "block";
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/check-allergies`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ medicines, allergies: userAllergies })
+            });
+            const data = await resp.json();
+            if (data.allergy_report) {
+                const hasRisk = data.allergy_report.includes("🔴") || data.allergy_report.includes("🟡");
+                algBadge.textContent  = hasRisk ? "🚨 Alert!" : "✅ Safe";
+                algBadge.className    = `feature-badge ${hasRisk ? "badge-danger" : "badge-ok"}`;
+                algResult.innerHTML   = marked ? marked.parse(data.allergy_report) : data.allergy_report;
+            } else {
+                algBadge.textContent  = data.message ? "✅ Safe" : "⚠️ Unavailable";
+                algBadge.className    = "feature-badge badge-ok";
+                algResult.textContent = data.message || data.warning || data.error || "No allergy info.";
+            }
+        } catch (e) {
+            document.getElementById("allergyBadge").textContent = "Error";
+            document.getElementById("allergyResult").textContent = e.message;
+        }
+    }
+}
+
 // ================================================================
+// 7. Doctors App — Hospital-wise view with available specialties
+// ================================================================
+
 
 const SPECIALTIES_ICONS = {
     "General Physician":  "🩺",
