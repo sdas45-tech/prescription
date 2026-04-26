@@ -1,11 +1,23 @@
+# PharmaLense Backend Requirements
+# Install: pip install -r requirements.txt
+
+# Core ML
 tensorflow>=2.12.0
 numpy
+Pillow
+scikit-learn
 matplotlib
 seaborn
-scikit-learn
-Pillow
-Flask
-Flask-Cors
-Werkzeug
+
+# Web Server
+Flask>=3.0.0
+Flask-Cors>=4.0.0
+Werkzeug>=3.0.0
+requests
 python-dotenv
-google-generativeai
+
+# Gemini AI — new SDK (preferred)
+google-genai>=1.0.0
+
+# Gemini AI — old SDK (fallback, optional)
+# google-generativeai
