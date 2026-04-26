@@ -35,6 +35,20 @@ from tensorflow.keras.preprocessing import image as keras_image
 from dotenv import load_dotenv
 
 # ---------------------------------------------------------------
+# OCR — pytesseract (optional, graceful fallback if not installed)
+# ---------------------------------------------------------------
+try:
+    import pytesseract
+    # On Windows, set Tesseract path if needed
+    _tess_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    if os.path.exists(_tess_path):
+        pytesseract.pytesseract.tesseract_cmd = _tess_path
+    pytesseract.get_tesseract_version()  # verify it's working
+    OCR_AVAILABLE = True
+except Exception:
+    OCR_AVAILABLE = False
+
+# ---------------------------------------------------------------
 # Gemini SDK — use new google.genai if available, fallback gracefully
 # ---------------------------------------------------------------
 try:
