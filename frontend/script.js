@@ -268,18 +268,29 @@ function showResults(data) {
 
         aiAnalysisText.innerHTML = formattedText;
 
+        // ----- Show OCR Panel -----
+        const ocr = data.ocr || {};
+        renderOcrPanel(ocr);
+
+        // Use OCR medicines (accurate) if available, otherwise fall back to AI text heuristic
+        const medicinesForCheck = (ocr.medicines && ocr.medicines.length > 0)
+            ? ocr.medicines
+            : null; // runSafetyChecks will extract from AI text as fallback
+
         // Show Map Section and find hospitals
         document.getElementById("mapSection").style.display = "block";
         initMapAndFindHospitals();
 
         // Run drug interaction + allergy safety checks
-        runSafetyChecks(rawText);
+        runSafetyChecks(rawText, medicinesForCheck);
 
     } else {
         aiAnalysisBox.style.display = "none";
-        document.getElementById("mapSection").style.display     = "none";
+        document.getElementById("mapSection").style.display       = "none";
         document.getElementById("interactionPanel").style.display = "none";
-        document.getElementById("allergyPanel").style.display    = "none";
+        document.getElementById("allergyPanel").style.display     = "none";
+        const ocrPanel = document.getElementById("ocrPanel");
+        if (ocrPanel) ocrPanel.style.display = "none";
         window._rawAiAnalysis = null;
     }
 }
@@ -587,9 +598,35 @@ function extractMedicineNames(text) {
     return [...new Set(matches.filter(m => m.length > 3 && !stopWords.has(m)))].slice(0, 12);
 }
 
+// --- OCR Panel Renderer ---
+function renderOcrPanel(ocr) {
+    let panel = document.getElementById("ocrPanel");
+    if (!panel) return;
+
+    if (!ocr.available) {
+        panel.style.display = "none";
+        return;
+    }
+
+    panel.style.display = "block";
+    const qualityColors = { good: "badge-ok", poor: "badge-warning", unreadable: "badge-danger", error: "badge-danger" };
+    const qualityClass  = qualityColors[ocr.quality] || "badge-warning";
+
+    const medsHtml = (ocr.medicines || []).length > 0
+        ? ocr.medicines.map(m => `<span class="allergy-tag" style="background:rgba(59,130,246,0.12);color:#3b82f6;border-color:rgba(59,130,246,0.3);">💊 ${m}</span>`).join("")
+        : `<span style="font-size:0.8rem;color:var(--text-muted);">No medicines extracted</span>`;
+
+    document.getElementById("ocrQualityBadge").textContent = ocr.quality?.toUpperCase() || "UNKNOWN";
+    document.getElementById("ocrQualityBadge").className   = `feature-badge ${qualityClass}`;
+    document.getElementById("ocrWordCount").textContent    = `${ocr.word_count || 0} words`;
+    document.getElementById("ocrRawText").textContent      = ocr.text || "(no text extracted)";
+    document.getElementById("ocrMedicines").innerHTML      = medsHtml;
+}
+
 // --- Run Interaction + Allergy checks after a prescription is analysed ---
-async function runSafetyChecks(aiText) {
-    const medicines = extractMedicineNames(aiText);
+async function runSafetyChecks(aiText, ocrMedicines = null) {
+    // Prefer accurate OCR-extracted medicines; fall back to JS heuristic on AI text
+    const medicines = ocrMedicines || extractMedicineNames(aiText);
     if (medicines.length < 1) return;
 
     // ---- Drug Interaction Check ----

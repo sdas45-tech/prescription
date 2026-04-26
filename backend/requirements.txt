@@ -16,6 +16,9 @@ Werkzeug>=3.0.0
 requests
 python-dotenv
 
+# OCR — requires Tesseract binary: https://github.com/UB-Mannheim/tesseract/wiki
+pytesseract
+
 # Gemini AI — new SDK (preferred)
 google-genai>=1.0.0
 

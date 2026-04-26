@@ -3,21 +3,27 @@ app.py - PharmaLense Flask Backend
 ====================================
 Endpoints:
     GET  /               -> Serves frontend
-    POST /api/predict    -> Prescription image classification + Gemini AI analysis
+    POST /api/predict    -> VGG16 classification + OCR text + Gemini AI analysis
     GET  /api/health     -> Health check
     GET  /api/model-info -> Model metadata
     GET  /api/hospitals  -> Nearby hospitals enriched with specialist data
+    GET  /api/ocr-status -> Check if Tesseract OCR is available
+    POST /api/check-interactions -> Drug-drug interaction check
+    POST /api/check-allergies    -> Allergy conflict check
+    POST /api/translate          -> Multi-language translation
 """
 
 import os
 import sys
 import json
+import re
 import random
 import hashlib
 import requests
 import numpy as np
 from io import BytesIO
 from datetime import datetime
+from PIL import Image, ImageFilter, ImageEnhance, ImageOps
 
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
@@ -25,7 +31,6 @@ from flask_cors import CORS
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image as keras_image
-from PIL import Image
 
 from dotenv import load_dotenv
 
@@ -68,6 +73,15 @@ SPECIALTIES = [
 
 OPD_TIMES = ["09:00 AM - 05:00 PM", "10:00 AM - 08:00 PM", "08:00 AM - 02:00 PM", "07:00 AM - 09:00 PM"]
 
+# Common medical stop-words to exclude from medicine extraction
+MED_STOPWORDS = {
+    "tab","cap","inj","syr","susp","oint","the","and","for","with","take",
+    "after","before","daily","twice","thrice","morning","evening","night",
+    "once","dose","days","week","month","food","water","doctor","patient",
+    "name","date","age","sex","male","female","rx","rp","sig","mitte",
+    "adhibendus","each","may","use","not","any","its","how","when"
+}
+
 # ---------------------------------------------------------------
 # Load Model
 # ---------------------------------------------------------------
@@ -90,6 +104,94 @@ def load_ml_model():
     if os.path.exists(LABELS_PATH):
         with open(LABELS_PATH) as f:
             class_labels = json.load(f)
+
+
+# ---------------------------------------------------------------
+# OCR Helper Functions
+# ---------------------------------------------------------------
+def preprocess_for_ocr(img: Image.Image) -> Image.Image:
+    """Enhance image contrast and sharpness for better OCR accuracy."""
+    gray      = img.convert("L")                         # grayscale
+    enhanced  = ImageEnhance.Contrast(gray).enhance(2.5) # boost contrast
+    sharpened = enhanced.filter(ImageFilter.SHARPEN)      # sharpen edges
+    # Binarize (black text on white)
+    binary    = sharpened.point(lambda p: 255 if p > 130 else 0)
+    return binary
+
+
+def run_ocr(img: Image.Image) -> dict:
+    """
+    Run Tesseract OCR on a prescription image.
+    Returns dict with: text, word_count, quality, medicines, available, error
+    """
+    if not OCR_AVAILABLE:
+        return {
+            "available": False, "text": "", "word_count": 0,
+            "quality": "unavailable", "medicines": [],
+            "error": "Tesseract not installed. Run: pip install pytesseract and install Tesseract binary."
+        }
+    try:
+        processed = preprocess_for_ocr(img)
+        # PSM 6 = assume uniform block of text (good for prescriptions)
+        config = "--oem 3 --psm 6"
+        raw_text = pytesseract.image_to_string(processed, config=config).strip()
+
+        word_count = len(raw_text.split())
+        quality    = "good" if word_count >= 8 else ("poor" if word_count >= 3 else "unreadable")
+        medicines  = extract_medicines_from_text(raw_text)
+
+        return {
+            "available":  True,
+            "text":       raw_text,
+            "word_count": word_count,
+            "quality":    quality,
+            "medicines":  medicines,
+            "error":      None
+        }
+    except Exception as e:
+        return {
+            "available": True, "text": "", "word_count": 0,
+            "quality": "error", "medicines": [], "error": str(e)
+        }
+
+
+def extract_medicines_from_text(text: str) -> list:
+    """
+    Extract medicine names from OCR text using medical regex patterns.
+    More accurate than the JS heuristic since it works on structured OCR output.
+    """
+    if not text:
+        return []
+
+    found = set()
+
+    # Pattern 1: Tab. / Cap. / Inj. / Syr. followed by medicine name
+    for m in re.findall(
+        r'(?:Tab|Cap|Inj|Syr|Susp|Oint|Drop|Ear|Eye)\.?\s+([A-Za-z][A-Za-z0-9\-]+(?:\s+[A-Za-z][A-Za-z0-9\-]+)?)',
+        text, re.IGNORECASE
+    ):
+        found.add(m.strip().title())
+
+    # Pattern 2: Word followed by dosage (500mg, 10ml, 250mcg)
+    for m in re.findall(
+        r'([A-Za-z][a-zA-Z0-9\-]{3,})\s+\d+\s*(?:mg|ml|mcg|iu|gm|g)\b',
+        text, re.IGNORECASE
+    ):
+        found.add(m.strip().title())
+
+    # Pattern 3: Rx / R/ marker followed by medicine
+    for m in re.findall(
+        r'(?:Rx?|R/)\s*\.?\s*([A-Za-z][A-Za-z0-9\-]+)',
+        text, re.IGNORECASE
+    ):
+        found.add(m.strip().title())
+
+    # Clean: remove stopwords, very short words
+    medicines = [
+        m for m in found
+        if len(m) > 3 and m.lower() not in MED_STOPWORDS
+    ]
+    return sorted(medicines)[:15]
 
 # ---------------------------------------------------------------
 # Flask App
@@ -131,12 +233,33 @@ def serve_static(filename):
 def health_check():
     """Health check endpoint."""
     return jsonify({
-        "status":       "healthy",
-        "app":          "PharmaLense",
-        "model_loaded": model is not None,
-        "gemini_sdk":   GEMINI_SDK or "unavailable",
-        "timestamp":    datetime.now().isoformat(),
+        "status":        "healthy",
+        "app":           "PharmaLense",
+        "model_loaded":  model is not None,
+        "gemini_sdk":    GEMINI_SDK or "unavailable",
+        "ocr_available": OCR_AVAILABLE,
+        "timestamp":     datetime.now().isoformat(),
     })
+
+@app.route("/api/ocr-status", methods=["GET"])
+def ocr_status():
+    """Return OCR engine availability and version."""
+    if not OCR_AVAILABLE:
+        return jsonify({
+            "available": False,
+            "message":   "Tesseract OCR not installed.",
+            "install":   "pip install pytesseract  |  then install Tesseract binary from https://github.com/UB-Mannheim/tesseract/wiki"
+        })
+    try:
+        version = pytesseract.get_tesseract_version()
+        return jsonify({
+            "available": True,
+            "version":   str(version),
+            "message":   "Tesseract OCR is ready.",
+            "mode":      "Text-mode Gemini (OCR → text → Gemini) when quality=good, else Vision-mode"
+        })
+    except Exception as e:
+        return jsonify({"available": False, "error": str(e)}), 500
 
 @app.route("/api/model-info", methods=["GET"])
 def model_info():
@@ -182,40 +305,77 @@ def predict_image():
         prediction = float(model.predict(img_array, verbose=0)[0][0])
 
         layman_explanation = None
+        ocr_result = {"available": OCR_AVAILABLE, "text": "", "word_count": 0,
+                      "quality": "not_run", "medicines": [], "error": None}
 
         if prediction >= 0.5:
             label      = class_labels.get("1", "prescription")
             confidence = prediction
 
-            # --- Gemini AI handwriting analysis ---
+            # ── Step 1: OCR ───────────────────────────────────────────────────
+            ocr_result = run_ocr(img)
+            print(f"[OCR] quality={ocr_result['quality']}  words={ocr_result['word_count']}  "
+                  f"medicines={ocr_result['medicines']}")
+
+            # ── Step 2: Gemini AI Analysis ────────────────────────────────────
             load_dotenv(override=True)
             current_key = os.getenv("GEMINI_API_KEY", "").strip()
 
             if current_key and current_key not in ("", "your_api_key_here"):
-                prompt = (
-                    "You are a helpful and friendly pharmacist. Look at this prescription image "
-                    "and decode the doctor's handwriting. Translate it into simple, easy-to-understand "
-                    "layman's terms. For each medicine found:\n"
-                    "1. **Medicine Name & Purpose** – What it is and what it treats.\n"
-                    "2. **Dosage** – How much and when to take it.\n"
-                    "3. **Side Effects** – Common side effects to watch for.\n\n"
-                    "Also provide:\n"
-                    "4. **Health Tips** – Relevant dietary or lifestyle advice.\n"
-                    "5. **Cautions** – Warnings, interactions, or when to see a doctor immediately.\n\n"
-                    "Use clear bullet points and bold text. If any part is unreadable, say so."
+                # If OCR extracted usable text, pass it as text (cheaper + faster)
+                # Otherwise fall back to sending the image directly (vision)
+                use_text_mode = (
+                    ocr_result["available"]
+                    and ocr_result["quality"] == "good"
+                    and len(ocr_result["text"]) > 30
                 )
+
+                if use_text_mode:
+                    # Text-mode prompt — OCR text fed directly to Gemini
+                    prompt = (
+                        "You are a helpful and friendly pharmacist. "
+                        "Below is the raw OCR-extracted text from a prescription image.\n\n"
+                        f"--- PRESCRIPTION TEXT ---\n{ocr_result['text']}\n--- END ---\n\n"
+                        "Please decode this prescription and explain it in simple layman's terms. "
+                        "For each medicine found:\n"
+                        "1. **Medicine Name & Purpose** – What it is and what it treats.\n"
+                        "2. **Dosage** – How much and when to take it.\n"
+                        "3. **Side Effects** – Common side effects to watch for.\n\n"
+                        "Also provide:\n"
+                        "4. **Health Tips** – Relevant dietary or lifestyle advice.\n"
+                        "5. **Cautions** – Warnings, interactions, or when to see a doctor immediately.\n\n"
+                        "Use clear bullet points and bold text. "
+                        "If any part is unclear from the OCR text, mention it."
+                    )
+                else:
+                    # Vision-mode prompt — pass image directly
+                    prompt = (
+                        "You are a helpful and friendly pharmacist. Look at this prescription image "
+                        "and decode the doctor's handwriting. Translate it into simple, easy-to-understand "
+                        "layman's terms. For each medicine found:\n"
+                        "1. **Medicine Name & Purpose** – What it is and what it treats.\n"
+                        "2. **Dosage** – How much and when to take it.\n"
+                        "3. **Side Effects** – Common side effects to watch for.\n\n"
+                        "Also provide:\n"
+                        "4. **Health Tips** – Relevant dietary or lifestyle advice.\n"
+                        "5. **Cautions** – Warnings, interactions, or when to see a doctor immediately.\n\n"
+                        "Use clear bullet points and bold text. If any part is unreadable, say so."
+                    )
+
                 try:
                     if GEMINI_SDK == "new":
-                        client = new_genai.Client(api_key=current_key)
+                        client   = new_genai.Client(api_key=current_key)
+                        contents_payload = [prompt] if use_text_mode else [prompt, img]
                         response = client.models.generate_content(
                             model="gemini-2.5-flash",
-                            contents=[prompt, img]
+                            contents=contents_payload
                         )
                         layman_explanation = response.text
                     elif GEMINI_SDK == "old":
                         old_genai.configure(api_key=current_key)
                         gm = old_genai.GenerativeModel("gemini-2.5-flash")
-                        layman_explanation = gm.generate_content([prompt, img]).text
+                        contents_payload = [prompt] if use_text_mode else [prompt, img]
+                        layman_explanation = gm.generate_content(contents_payload).text
                     else:
                         layman_explanation = "⚠️ Gemini SDK not installed. Run: pip install google-genai"
                 except Exception as e:
@@ -238,6 +398,7 @@ def predict_image():
                 "is_prescription":    prediction >= 0.5,
                 "layman_explanation": layman_explanation,
             },
+            "ocr": ocr_result,
             "file_info": {
                 "filename":     file.filename,
                 "content_type": file.content_type,

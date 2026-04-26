@@ -227,7 +227,27 @@
                             </div>
                             <div id="allergyResult" class="feature-panel-body">Checking against your allergy profile...</div>
                         </div>
+
+                        <!-- OCR Results Panel -->
+                        <div id="ocrPanel" class="feature-panel" style="display:none; margin-top:16px;">
+                            <div class="feature-panel-header">
+                                <span>🔍 OCR Text Extraction</span>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <span id="ocrWordCount" style="font-size:0.72rem;color:var(--text-muted);"></span>
+                                    <span id="ocrQualityBadge" class="feature-badge badge-warning">...</span>
+                                </div>
+                            </div>
+                            <div class="feature-panel-body">
+                                <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;">💊 Extracted Medicines (used for interaction &amp; allergy checks):</p>
+                                <div id="ocrMedicines" class="allergy-tags-wrap" style="margin-bottom:14px;"></div>
+                                <details style="margin-top:8px;">
+                                    <summary style="font-size:0.78rem;color:var(--text-muted);cursor:pointer;user-select:none;">📄 View Raw OCR Text</summary>
+                                    <pre id="ocrRawText" style="font-size:0.72rem;color:var(--text-secondary);margin-top:10px;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,0.2);padding:12px;border-radius:8px;max-height:180px;overflow-y:auto;"></pre>
+                                </details>
+                            </div>
+                        </div>
                     </div>
+
 
                     <button class="btn-new" id="btnNew">
                         <span>&#8635;</span> Analyze Another Image
