@@ -1781,3 +1781,71 @@ body {
     border-color: var(--border-glow);
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
+
+/* ════════════════════════════════════════════════════════════
+   Tech Stack API Logos
+   ════════════════════════════════════════════════════════════ */
+.tech-stack-section {
+    text-align: center;
+    margin: 40px auto 20px;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    max-width: 600px;
+}
+
+.tech-stack-title {
+    font-family: var(--font-brand);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.tech-stack-logos {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+}
+
+.tech-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    filter: grayscale(80%);
+}
+
+.tech-logo svg {
+    width: 32px;
+    height: 32px;
+    transition: transform 0.3s ease;
+}
+
+.tech-logo span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+.tech-logo:hover {
+    opacity: 1;
+    filter: grayscale(0%);
+    transform: translateY(-4px);
+}
+
+.tech-logo:hover svg {
+    transform: scale(1.1);
+}
+
+.tech-logo:hover span {
+    color: white;
+}
+
