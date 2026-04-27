@@ -581,6 +581,10 @@ function speakAnalysis() {
 
 // --- Simple Markdown Formatter Helper ---
 function formatMarkdown(text) {
+    if (typeof marked !== "undefined") {
+        return marked.parse(text);
+    }
+    // Fallback if marked fails to load
     return text
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n\*/g, '<br>• ')
