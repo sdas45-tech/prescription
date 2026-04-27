@@ -509,10 +509,13 @@ renderAllergyTags(); // init on load
 
 // --- Voice Output (Web Speech API) ---
 let isSpeaking = false;
+let speechChunks = [];
 
 function speakAnalysis() {
     const btn  = document.getElementById("voiceBtn");
-    const text = document.getElementById("aiAnalysisText")?.innerText || "";
+    // Get visible text and strip out markdown symbols or emojis to help the speech engine
+    let text = document.getElementById("aiAnalysisText")?.innerText || "";
+    text = text.replace(/[\*•🩺👨‍⚕️💊🚨]/g, "").trim();
 
     if (!text || text === "--") return;
 
@@ -534,24 +537,55 @@ function speakAnalysis() {
         "English": "en-US"
     };
 
-    const utterance  = new SpeechSynthesisUtterance(text);
-    utterance.lang   = langMap[lang] || "en-US";
-    utterance.rate   = 0.9;
-    utterance.pitch  = 1;
-
-    utterance.onstart = () => {
-        isSpeaking = true;
-        btn.innerHTML = `⏹ <span class="feature-btn-label">Stop</span>`;
-        btn.classList.add("voice-btn-active");
-    };
-    utterance.onend = utterance.onerror = () => {
-        isSpeaking = false;
-        btn.innerHTML = `🔊 <span class="feature-btn-label">Listen</span>`;
-        btn.classList.remove("voice-btn-active");
-    };
-
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+
+    // Chrome has a bug where speech synthesis stops after 15 seconds.
+    // To fix this, we split the text into chunks and speak them sequentially.
+    speechChunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+    let currentChunk = 0;
+    isSpeaking = true;
+
+    btn.innerHTML = `⏹ <span class="feature-btn-label">Stop</span>`;
+    btn.classList.add("voice-btn-active");
+
+    function speakNextChunk() {
+        if (!isSpeaking || currentChunk >= speechChunks.length) {
+            isSpeaking = false;
+            btn.innerHTML = `🔊 <span class="feature-btn-label">Listen</span>`;
+            btn.classList.remove("voice-btn-active");
+            return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(speechChunks[currentChunk].trim());
+        utterance.lang  = langMap[lang] || "en-US";
+        utterance.rate  = 0.9;
+        utterance.pitch = 1;
+
+        utterance.onend = () => {
+            currentChunk++;
+            speakNextChunk();
+        };
+
+        utterance.onerror = (e) => {
+            console.error("Speech error:", e);
+            isSpeaking = false;
+            btn.innerHTML = `🔊 <span class="feature-btn-label">Listen</span>`;
+            btn.classList.remove("voice-btn-active");
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    speakNextChunk();
+}
+
+// --- Simple Markdown Formatter Helper ---
+function formatMarkdown(text) {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n\*/g, '<br>• ')
+        .replace(/\n\-/g, '<br>• ')
+        .replace(/\n/g, '<br>');
 }
 
 // --- Multi-Language Translation ---
@@ -560,11 +594,14 @@ document.getElementById("languageSelect")?.addEventListener("change", async func
     const rawText = window._rawAiAnalysis;
     if (!rawText || rawText === "--") return;
 
+    // Stop speaking if translation changes
+    if (isSpeaking) speakAnalysis();
+
     const loader = document.getElementById("translateLoader");
     const box    = document.getElementById("aiAnalysisText");
 
     if (lang === "English") {
-        box.innerHTML = marked ? marked.parse(rawText) : rawText;
+        box.innerHTML = formatMarkdown(rawText);
         return;
     }
 
@@ -577,7 +614,7 @@ document.getElementById("languageSelect")?.addEventListener("change", async func
         });
         const data = await resp.json();
         if (data.translated) {
-            box.innerHTML = marked ? marked.parse(data.translated) : data.translated;
+            box.innerHTML = formatMarkdown(data.translated);
         } else {
             box.innerHTML = `<span style="color:var(--accent-amber);">${data.warning || data.error || "Translation failed."}</span>`;
         }
@@ -647,7 +684,7 @@ async function runSafetyChecks(aiText, ocrMedicines = null) {
                 const hasSevere = data.interactions.includes("🔴");
                 intBadge.textContent  = hasSevere ? "⚠️ Warnings Found" : "✅ Checked";
                 intBadge.className    = `feature-badge ${hasSevere ? "badge-danger" : "badge-ok"}`;
-                intResult.innerHTML   = marked ? marked.parse(data.interactions) : data.interactions;
+                intResult.innerHTML   = formatMarkdown(data.interactions);
             } else {
                 intBadge.textContent  = "⚠️ Unavailable";
                 intBadge.className    = "feature-badge badge-warning";
@@ -677,7 +714,7 @@ async function runSafetyChecks(aiText, ocrMedicines = null) {
                 const hasRisk = data.allergy_report.includes("🔴") || data.allergy_report.includes("🟡");
                 algBadge.textContent  = hasRisk ? "🚨 Alert!" : "✅ Safe";
                 algBadge.className    = `feature-badge ${hasRisk ? "badge-danger" : "badge-ok"}`;
-                algResult.innerHTML   = marked ? marked.parse(data.allergy_report) : data.allergy_report;
+                algResult.innerHTML   = formatMarkdown(data.allergy_report);
             } else {
                 algBadge.textContent  = data.message ? "✅ Safe" : "⚠️ Unavailable";
                 algBadge.className    = "feature-badge badge-ok";
